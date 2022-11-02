@@ -21,8 +21,8 @@ import network_functions as nf # Module containing SMURF routines.
 # GLOBAL VARIABLES
 datafile = 'data_unalign.npz' # File containing the MSA data.
 protein = '3A0YA' # Name of the protein to use in the tests.
-N_samples = 500 # Number of sequences to select for the procedure.
-N_steps = 10 # Number of training steps.
+N_samples = 1000 # Number of sequences to select for the procedure.
+N_steps = 1000 # Number of training steps.
 
 
 
@@ -45,11 +45,10 @@ if __name__ == "__main__":
     # Create a smooth SW model.
     ms = nf.one_hot(nf.pad_max(x)) # pad_max converts a list of 1D-arrays into a 2D array, adding -1 to empty entries. For example, [[1,2,3],[4]] -> [[1,2,3],[4,-1,-1]]. One-hot then converts each 1D-array into an identity matrix with padding determined by the entries. Overall, this command just converts the data into the format the machine learning model expects.
     lens = np.array([len(y) for y in x]) # Array of lengths of sequences.
-    basic_steps = [N_steps,0,0,0] # Hyperparameters. I believe the first parameter is the number of learning steps; the other 3 are auxillary parameters the meaning of which is unclear.
     gap = -3 # Alighnment gap penalty.
     model = nf.BasicAlign(X=ms, lengths=lens, sw_gap = gap) # This model will be trained.
     
     # Train the model, obtain and print the MSA parameters.
     print ("")
     print ("Training model...")
-    model.fit(basic_steps[0])
+    model.fit(N_steps)
