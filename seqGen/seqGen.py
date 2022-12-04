@@ -355,42 +355,37 @@ def generate_a3m (filename: str, seq_length : int, seq_file_length : int, seq_ty
     if (generate_a3m2 and not seq_spaced):
         raise ValueError ("In generate_a3m(), the 'generate_a3m2' argument being True is incompatible with the 'seq_spaced' argument being False.")
         
-    # Generate the initial sequence.
+    # Generate the initial sentence.
     if core_sentence is None:
         core_sentence = gen_sentence(seq_length, full_world_list, length_type=seq_type, spaced=seq_spaced)
-    
-    # Generate the altered sequences.
-    altered_sequences = []
-    if generate_a3m2:
-        altered_spaced_sequences = []
+        
+    # Generate the full sequence list.    
+    altered_sentences_list = []
     for i in range(seq_file_length-1):
         remove_frac = np.random.uniform(alt_insert_frac[0], alt_insert_frac[1])
         insert_frac = np.random.uniform(alt_insert_frac[0], alt_insert_frac[1])
         altered_sentence = alter_sentence(core_sentence, w_alphabet, full_world_list, remove_frac=remove_frac, insert_frac=insert_frac, alteration_type=alt_type, spaced=seq_spaced)
-        core_sequence, altered_sequence = align_sentences(core_sentence, [altered_sentence], w_alphabet, alteration_type=alt_type, preserve_spaces=False)
-        altered_sequences.append(altered_sequence)
-        if generate_a3m2:
-            core_sequence_spaced, altered_sequence_spaced = align_sentences(core_sentence, [altered_sentence], w_alphabet, alteration_type=alt_type, preserve_spaces=True)
-            altered_spaced_sequences.append(altered_sequence_spaced)
+        altered_sentences_list.append(altered_sentence)
+    output_sequence_list = align_sentences(core_sentence, altered_sentences_list, w_alphabet, alteration_type=alt_type, preserve_spaces=True)
             
     # Save the file(s).
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
         
+    if generate_a3m2:
+        f_a3m2 = open(save_dir+'/'+filename+'.a3m2', 'w')
+        for i, seq in enumerate(output_sequence_list):
+            if i > 0:
+                f_a3m2.write ('\n')
+            f_a3m2.write ('>' + str(i) + '\n')
+            f_a3m2.write(seq)
+        f_a3m2.close()
+    
+    output_sequence_list = [s.replace(' ','') for s in output_sequence_list]
     f_a3m = open(save_dir+'/'+filename+'.a3m', 'w')
-    for i, seq in enumerate([core_sequence]+altered_sequences):
+    for i, seq in enumerate(output_sequence_list):
         if i > 0:
             f_a3m.write ('\n')
         f_a3m.write ('>' + str(i) + '\n')
         f_a3m.write(seq)
     f_a3m.close()
-    
-    if generate_a3m2:
-        f_a3m2 = open(save_dir+'/'+filename+'.a3m2', 'w')
-        for i, seq in enumerate([core_sequence_spaced]+altered_spaced_sequences):
-            if i > 0:
-                f_a3m2.write ('\n')
-            f_a3m2.write ('>' + str(i) + '\n')
-            f_a3m2.write(seq)
-    f_a3m2.close()
-
