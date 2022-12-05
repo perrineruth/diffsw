@@ -13,6 +13,7 @@ module 'jax.experimental' has no attribute 'optimizers'"
 """
 
 import numpy as np
+import time
 import network_functions as nf # Module containing SMURF routines.
 
 
@@ -22,33 +23,55 @@ import network_functions as nf # Module containing SMURF routines.
 datafile = 'data_unalign.npz' # File containing the MSA data.
 protein = '3A0YA' # Name of the protein to use in the tests.
 N_samples = 1000 # Number of sequences to select for the procedure.
-N_steps = 1000 # Number of training steps.
+#N_steps = 1000 # Number of training steps.
+N_steps = 100
 
 
 
 
 if __name__ == "__main__":
     
+    # Custom Print function to keep track of the runtime.
+    time_begin = time.time()
+    def Print(s):
+      print (str(int(time.time()-time_begin))+' sec:        ' + str(s))   
+    
     # Load the data and pick one of the proteins in it. Then load the set of multiple sequences.
     data = np.load (datafile, allow_pickle=True)
-    x = data[protein].item()['ms']
+    X = data[protein].item()['ms']
     
     # Explore the data.
-    print ("Data for the " + protein + " protein has been loaded into variable x.")
-    print ("x is a " + str(np.shape(x)) + " array of entries like")
-    print (str(x[0]))
-    print ('Each number from 0 to 20 corresponds to one of 20 aminoacids.')
+    Print ("Data for the " + protein + " protein has been loaded into variable x.")
+    Print ("x is a " + str(np.shape(X)) + " array of entries like")
+    Print (str(X[0]))
+    Print ('Each number from 0 to 20 corresponds to one of 20 aminoacids.')
     
     # The data is too large for training within a reasonable timeframe. Take a smaller subset of data.
-    x = nf.sub_sample(x, samples=N_samples)
+    x = nf.sub_sample(X, samples=N_samples)
             
-    # Create a smooth SW model.
+    # Create the BasicAlign model.
     ms = nf.one_hot(nf.pad_max(x)) # pad_max converts a list of 1D-arrays into a 2D array, adding -1 to empty entries. For example, [[1,2,3],[4]] -> [[1,2,3],[4,-1,-1]]. One-hot then converts each 1D-array into an identity matrix with padding determined by the entries. Overall, this command just converts the data into the format the machine learning model expects.
     lens = np.array([len(y) for y in x]) # Array of lengths of sequences.
     gap = -3 # Alighnment gap penalty.
-    model = nf.BasicAlign(X=ms, lengths=lens, sw_gap = gap) # This model will be trained.
+    model_basicAlign = nf.BasicAlign(X=ms, lengths=lens, sw_gap = gap) # This model will be trained.
     
     # Train the model, obtain and print the MSA parameters.
-    print ("")
-    print ("Training model...")
-    model.fit(N_steps)
+    Print ("")
+    Print ("Training the BasicAlign model...")
+    model_basicAlign.fit(N_steps, verbose=True)
+    msa_params = model_basicAlign.opt.get_params()
+    Print ("Parameters of the trained model:", + str(msa_params))
+    
+    # Create the TrainMRF model.
+    x = nf.sub_sample(X, samples=N_samples)
+    lens = np.array([len(y) for y in x])
+    ms = nf.one_hot(nf.pad_max(x))
+    model_trainMRF = nf.MRF(X=ms, lengths=lens, sw_gap = gap)
+    mrf_params = model_trainMRF.opt.get_params()
+    for p in ["emb","gap","open"]:
+        mrf_params[p] = msa_params[p]
+    model_trainMRF.opt.set_params(mrf_params)
+    Print ("Training the MRF model...")
+    model_trainMRF.fit(N_steps, verbose=True)
+    mrf_params = model_trainMRF.opt.get_params()
+    Print ("Parameters of the trained model:" + str(mrf_params))
