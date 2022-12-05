@@ -244,48 +244,90 @@ def align_sentences (core_sentence : str, altered_sentence_list : [str], alphabe
         for i in range(len(altered_sentence_list)):
             if len(altered_sentence_list[i][2]) > 0:
                 list_insertion_indices, list_insertion_values = [altered_sentence_list[i][2][k][0] for k in range(len(altered_sentence_list[i][2]))], [altered_sentence_list[i][2][k][1] for k in range(len(altered_sentence_list[i][2]))]
-                sentence = altered_sentence_list[i][0]
                 for index_ins, value_ins in zip(list_insertion_indices, list_insertion_values):
+                    sentence = altered_sentence_list[i][0]
                     count = -1
                     for j in range(len(core_sentence)):
-                        if sentence[j] in alphabet + [' '] or sentence[j].upper() in alphabet:
+                        if sentence[j].upper() in alphabet + [' ']:
                             count += 1
                         if count == index_ins:
                             break
-                    if core_sentence[j] == '.':
-                        sentence = sentence[:j] + value_ins.lower() + sentence[j+1:]
-                    else:
-                        core_sentence = core_sentence[:j] + '.' + core_sentence[j:]
-                        for k in range(len(altered_sentence_list)):
-                            if k == i:
-                                altered_sentence_list[k][0] = sentence[:j] + value_ins.lower() + sentence[j:]
-                            else:
-                                altered_sentence_list[k][0] = altered_sentence_list[k][0][:j] + '.' + altered_sentence_list[k][0][j:]
+                    core_sentence = core_sentence[:j] + '.' + core_sentence[j:]
+                    for k in range(len(altered_sentence_list)):
+                        if k == i:
+                            altered_sentence_list[k][0] = sentence[:j] + value_ins.lower() + sentence[j:]
+                        else:
+                            altered_sentence_list[k][0] = altered_sentence_list[k][0][:j] + '.' + altered_sentence_list[k][0][j:]
                     
     elif alteration_type == 'words':
         for i in range(len(altered_sentence_list)):
             if len(altered_sentence_list[i][2]) > 0:
                 list_insertion_indices, list_insertion_values = [altered_sentence_list[i][2][k][0] for k in range(len(altered_sentence_list[i][2]))], [altered_sentence_list[i][2][k][1] for k in range(len(altered_sentence_list[i][2]))]
-                sentence_list = altered_sentence_list[i][0].split()
-                core_sentence_list = core_sentence.split()
                 for index_ins, value_ins in zip(list_insertion_indices, list_insertion_values):
+                    sentence_list = altered_sentence_list[i][0].split()
+                    core_sentence_list = core_sentence.split()
                     count = -1
                     for j in range(len(sentence_list)):
-                        if sentence_list[j][0] in alphabet or sentence_list[j][0].upper() in alphabet:
+                        if sentence_list[j][0].upper() in alphabet:
                             count += 1
                         if count == index_ins:
                             break 
-                    if core_sentence_list[j][0] == '.':
-                        sentence_list = sentence_list[:j] + [value_ins.lower()] + sentence_list[j+1:]
-                    else:
-                        core_sentence_list = core_sentence_list[:j] + ['.'*len(value_ins)] + core_sentence_list[j:]
-                        core_sentence = ' '.join(core_sentence_list)
-                        for k in range(len(altered_sentence_list)):
-                            if k == i:
-                                altered_sentence_list[k][0] = ' '.join(sentence_list[:j] + [value_ins.lower()] + sentence_list[j:])
-                            else:
-                                split_altered_sentence = altered_sentence_list[k][0].split()
-                                altered_sentence_list[k][0] = ' '.join(split_altered_sentence[:j] + ['.'*len(value_ins)] + split_altered_sentence[j:])
+                    core_sentence_list = core_sentence_list[:j] + ['.'*len(value_ins)] + core_sentence_list[j:]
+                    core_sentence = ' '.join(core_sentence_list)
+                    for k in range(len(altered_sentence_list)):
+                        if k == i:
+                            altered_sentence_list[k][0] = ' '.join(sentence_list[:j] + [value_ins.lower()] + sentence_list[j:])
+                        else:
+                            split_altered_sentence = altered_sentence_list[k][0].split()
+                            altered_sentence_list[k][0] = ' '.join(split_altered_sentence[:j] + ['.'*len(value_ins)] + split_altered_sentence[j:])
+                            
+    # Clean up the cluttered '.'-s.
+    
+    if alteration_type == 'characters':
+        curr_dots_in_a_row = 0
+        for i, s in enumerate(core_sentence):
+            if s == '.':
+                if curr_dots_in_a_row == 0:
+                    start_index = i
+                curr_dots_in_a_row += 1
+            elif curr_dots_in_a_row > 0:
+                end_index = i
+                for k in range(len(altered_sentence_list)):
+                    sentence_seg = altered_sentence_list[k][0][start_index:end_index]
+                    chunk = ''.join([c for c in sentence_seg if not c=='.'])
+                    altered_sentence_list[k][0] = altered_sentence_list[k][0][:start_index] + chunk + '.'*(len(sentence_seg)-len(chunk)) + altered_sentence_list[k][0][end_index:]
+                    
+    elif alteration_type == 'words':
+        for k in range(len(altered_sentence_list)):
+            altered_sentence_list[k][0] = altered_sentence_list[k][0].split()
+        curr_dots_in_a_row = 0
+        for i, s in enumerate(core_sentence_list):
+            if s[0] == '.':
+                if curr_dots_in_a_row == 0:
+                    start_index = i
+                curr_dots_in_a_row += 1
+            elif curr_dots_in_a_row > 0:
+                end_index = i
+                curr_dots_in_a_row = 0
+                for k in range(len(altered_sentence_list)):
+                    sentence_seg = [altered_sentence_list[k][0][l] for l in np.arange(start_index, end_index)]
+                    chunk = [s for s in sentence_seg if not s[0]=='.']
+                    altered_sentence_list[k][0] = [altered_sentence_list[k][0][l] for l in range(start_index)] + chunk + ['.']*(len(sentence_seg)-len(chunk)) + [altered_sentence_list[k][0][l] for l in np.arange(end_index,len(core_sentence_list))]
+                for l in range(start_index, end_index):
+                    max_len = max([len(altered_sentence[0][l]) for altered_sentence in altered_sentence_list])
+                    for k in range(len(altered_sentence_list)):
+                        altered_sentence_list[k][0][l] = altered_sentence_list[k][0][l] + '.'*(max_len - len(altered_sentence_list[k][0][l]))
+                    core_sentence_list[l] = '.'*max_len
+        
+        for l in reversed(range(len(core_sentence_list))):
+            if [altered_sentence[0][l] for altered_sentence in altered_sentence_list]==['.']*len(altered_sentence_list):
+                core_sentence_list = core_sentence_list[:l] + core_sentence_list[l+1:]
+                for k in range(len(altered_sentence_list)):
+                    altered_sentence_list[k][0] = altered_sentence_list[k][0][:l] + altered_sentence_list[k][0][l+1:]
+        core_sentence = ' '.join(core_sentence_list)
+        for k in range(len(altered_sentence_list)):
+            altered_sentence_list[k][0] = ' '.join(altered_sentence_list[k][0])
+                    
                                 
     # Remove the spaces if needed.
     if not preserve_spaces:
