@@ -60,7 +60,7 @@ if __name__ == "__main__":
     Print ("Training the BasicAlign model...")
     model_basicAlign.fit(N_steps, verbose=True)
     msa_params = model_basicAlign.opt.get_params()
-    Print ("Parameters of the trained model:", + str(msa_params))
+    Print ("Parameters of the trained model: " + str(list(msa_params.keys())))
     
     # Create the TrainMRF model.
     x = nf.sub_sample(X, samples=N_samples)
@@ -78,4 +78,4 @@ if __name__ == "__main__":
     Print ("Training the MRF model...")
     model_trainMRF.fit(N_steps, verbose=True)
     mrf_params = model_trainMRF.opt.get_params()
-    Print ("Parameters of the trained model:" + str(mrf_params))
+    Print ("Parameters of the trained model: " + str(list(mrf_params.keys())))
