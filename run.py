@@ -67,10 +67,14 @@ if __name__ == "__main__":
     lens = np.array([len(y) for y in x])
     ms = nf.one_hot(nf.pad_max(x))
     model_trainMRF = nf.MRF(X=ms, lengths=lens, sw_gap = gap)
+    
+    # Update it with the BasicAlign parameters.
     mrf_params = model_trainMRF.opt.get_params()
     for p in ["emb","gap","open"]:
         mrf_params[p] = msa_params[p]
     model_trainMRF.opt.set_params(mrf_params)
+    
+    # Train the model, obtain and print the MSA parameters.
     Print ("Training the MRF model...")
     model_trainMRF.fit(N_steps, verbose=True)
     mrf_params = model_trainMRF.opt.get_params()
