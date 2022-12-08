@@ -22,9 +22,9 @@ import network_functions as nf # Module containing SMURF routines.
 # GLOBAL VARIABLES
 datafile = 'data_unalign.npz' # File containing the MSA data.
 test_protein = '3A0YA' # Name of the protein to use in the tests.
-N_samples = 1000 # Number of sequences to select for the procedure.
-N_families = 100 # Number of proteins to train the model on.
-N_steps = 100 # Number of training steps.
+N_samples = 2000 # Number of sequences to select for the procedure.
+N_families = 300 # Number of proteins to train the model on.
+N_steps = 300 # Number of training steps.
 testfile = 'seqGen/out/words_generated_test.a3m'
 trainfile = 'seqGen/out/words_generated_train.a3m'
 
@@ -134,6 +134,16 @@ def train_model_preset_data():
     model_trainMRF.fit(N_steps, verbose=True)
     mrf_params = model_trainMRF.opt.get_params()
     Print ("Parameters of the trained model: " + str(list(mrf_params.keys())))
+    
+    # Obtain the alignments and the protein contacts.
+    aln = np.copy(model_trainMRF.get_aln(np.array(range(10)))[0])
+    contacts = model_trainMRF.get_contacts()
+    
+    Print ("Alignment:")
+    Print (str(aln))
+    Print ("")
+    Print ("Contacts:")
+    Print (str(contacts))
     
     # Test the model's performance.
     #model_trainMRF.predict(x)
