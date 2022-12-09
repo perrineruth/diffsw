@@ -253,4 +253,11 @@ def run_simulation():
     
     
 if __name__ == "__main__":
-    run_data()
+    
+    # Uncomment this to run training on the original data.
+    #run_data()
+    
+    # Uncomment this to run training on the simulated data (generated automatically).
+    #run_simulation()
+    
+    pass
