@@ -22,7 +22,7 @@ from seqGen.seqGen import generate_a3m
 
 
 
-# GLOBAL VARIABLES
+# DATA VARIABLES
 datafile = 'data_unalign.npz' # File containing the MSA data.
 test_protein = '3A0YA' # Name of the protein to use in the tests.
 N_samples = 2000 # Number of sequences to select for the procedure.
