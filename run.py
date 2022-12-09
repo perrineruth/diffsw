@@ -28,14 +28,14 @@ datafile = 'data_unalign.npz' # File containing the MSA data.
 test_protein = '3A0YA' # Name of the protein to use in the tests.
 N_samples = 2000 # Number of sequences to select for the procedure.
 N_steps = 500 # Number of training steps.
-N_proteins = 50 # Number of proteins to train the model for.
+N_proteins = 1 # Number of proteins to train the model for.
 pickle_file_data = 'train_data.pickle' # Pickle file for the outputs of training on the initial data.
 
 
 # SIMULATION VARIABLES.
 sim_alphabet = ('ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'full') # Tuple: string containing all symbols in the alphabet for the simulated data, and its seqGen name ('RNA', 'amino', or 'full').
-sim_N_MSAs = 10 # Number of MSA files to simulate.
-sim_seq_length = 50 # Length of one simulated sequence.
+sim_N_MSAs = 1 # Number of MSA files to simulate.
+sim_seq_length = 100 # Length of one simulated sequence.
 sim_seq_num = 200 # Number of simulated sequences per file.
 pickle_file_sim = 'train_sim.pickle' # Pickle file for the outputs of training on the simulated data.
 
@@ -152,7 +152,7 @@ def train_model(seq_array, verbose=False):
     msa_params = model_basicAlign.opt.get_params()
     
     # Create the TrainMRF model.
-    x = nf.sub_sample(seq_array, samples=N_samples)
+    x = nf.sub_sample(seq_array, samples=min(N_samples,len(seq_array)))
     lens = np.array([len(y) for y in x])
     ms = nf.one_hot(nf.pad_max(x))
     model_trainMRF = nf.MRF(X=ms, lengths=lens, sw_gap = gap)
@@ -259,7 +259,7 @@ def run_simulation():
 if __name__ == "__main__":
     
     # Uncomment this to run training on the original data.
-    #run_data()
+    run_data()
     
     # Uncomment this to run training on the simulated data (generated automatically).
     run_simulation()
