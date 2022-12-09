@@ -340,7 +340,7 @@ def align_sentences (core_sentence : str, altered_sentence_list : [str], alphabe
 
 
 
-# Generates an *.a3m file with the specified parameters. May also produce a *.a3m2 file if requested.
+# Generates an *.a3m file with the specified parameters. May also produce an *.a3m2 file if requested.
 # ---
 # filename: name of the file(s) to produce (minus the extension).
 # seq_length: length of each generated sequence, either in words (if seq_type='words') or characters (if seq_type='characters').

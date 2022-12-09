@@ -1,5 +1,5 @@
 """
-This file should be put in the core directory of SMURF. In the same directory this file must be downloaded: https://files.ipd.uw.edu/krypton/data_unalign.npz
+This file along with the seqGen folder (https://github.com/perrineruth/diffsw) should be put in the core directory of SMURF (https://github.com/spetti/SMURF). In the same directory this file must be downloaded: https://files.ipd.uw.edu/krypton/data_unalign.npz
 
 
 ---
@@ -17,6 +17,7 @@ import time
 import random
 import pickle
 import network_functions as nf # Module containing SMURF routines.
+from seqGen.seqGen import generate_a3m
 
 
 
@@ -27,10 +28,15 @@ test_protein = '3A0YA' # Name of the protein to use in the tests.
 N_samples = 2000 # Number of sequences to select for the procedure.
 N_steps = 500 # Number of training steps.
 N_proteins = 50 # Number of proteins to train the model for.
-testfile = 'seqGen/out/words_generated_test.a3m'
-trainfile = 'seqGen/out/words_generated_train.a3m'
 pickle_file_data = 'train_data.pickle' # Pickle file for the outputs of training on the initial data.
-pikle_file_sim = 'train_sim.pickle' # Pickle file for the outputs of training on the simulated data.
+
+
+# SIMULATION VARIABLES.
+sim_alphabet = ('ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'full') # Tuple: string containing all symbols in the alphabet for the simulated data, and its seqGen name ('RNA', 'amino', or 'full').
+sim_N_MSAs = 10 # Number of MSA files to simulate.
+sim_seq_length = 50 # Length of one simulated sequence.
+sim_seq_num = 200 # Number of simulated sequences per file.
+pickle_file_sim = 'train_sim.pickle' # Pickle file for the outputs of training on the simulated data.
 
 
 
@@ -169,7 +175,6 @@ def train_model(seq_array, verbose=False):
 
 
 
-
 # Reads the original *.npz file, randomly selects N_proteins proteins from it and trains the model on those. Saves the resulting alignments and contact scores into a pickle file.
 def run_data():
     
@@ -183,7 +188,7 @@ def run_data():
     protein_indices = random.sample(list(np.arange(0, get_N_proteins(), 1)), N_proteins)
     dict_MSA = {}
     for j, i in enumerate(protein_indices):
-        Print (str(j) + ' / ' + str(len(protein_indices)))
+        Print (str(j+1) + ' / ' + str(len(protein_indices)))
         MSA, name = get_protein_MSA(i, datafile, True)
         dict_MSA[name] = {}
         dict_MSA[name]['input_MSA'] = MSA
@@ -205,51 +210,44 @@ def run_data():
 
 
 
-
-# IMPLEMENTATION PENDING
+# Generates sim_N_MSAs simulated datasets and trains the model on them. Saves the resulting alignments and contact scores into a pickle file.
 def run_simulation():
-    pass
-    
-    
-    
-    
-# Generates a simulated dataset and trains the model on it.
-def train_model_simulated_data():
     
     # Custom Print function to keep track of the runtime.
     time_begin = time.time()
     def Print(s):
-      print (str(int(time.time()-time_begin))+' sec:        ' + str(s))   
-      
-    # Load the training and the testing data.
-    alphabet = ''.join(['A', 'R', 'N', 'D', 'C', 'E', 'Q', 'G', 'H', 'I', 'L', 'K', 'M', 'F', 'P', 'S', 'T', 'W', 'Y', 'V'])
-    ms_testing, ms_training = get_feat(testfile, alphabet)[1], get_feat(trainfile, alphabet)[1]
-    ms_te, ms_tr = nf.one_hot(nf.pad_max(ms_testing)), nf.one_hot(nf.pad_max(ms_training))
-    lens_te, lens_tr = np.array([len(y) for y in ms_te]), np.array([len(y) for y in ms_tr])
-    gap = -3
+        print (str(int(time.time()-time_begin))+' sec:        ' + str(s))  
+        
+    # Generate the simulated dataset.
+    Print ("Generating the simulated dataset: " + str(sim_N_MSAs) + " files, each containing " + str(sim_seq_num) + " sequences of length " + str(sim_seq_length) + ". Working on file...")
+    for i in range(sim_N_MSAs):
+        Print (str(i+1) + " / " + str(sim_N_MSAs))
+        generate_a3m ('seqGen/out/sim_'+str(i+1), sim_seq_length, sim_seq_num, w_alphabet = sim_alphabet[1])
+    Print ("Generation complete.")
     
-    # Create the BasicAlign model.
-    model_basicAlign = nf.BasicAlign(X=ms_tr, lengths=lens_tr, sw_gap=gap)
+    # Build a dictionary of the MSAs.
+    Print ("Building the dictionary of the MSAs. Working on MSA...")
+    dict_MSA = {}
+    for i in range(sim_N_MSAs):
+        Print (str(i+1) + ' / ' + str(sim_N_MSAs))
+        msa_raw = get_feat('seqGen/out/sim_'+str(i+1), sim_alphabet[0])[1]
+        MSA = nf.one_hot(nf.pad_max(msa_raw))
+        dict_MSA['sim_'+str(i+1)] = {}
+        dict_MSA['sim_'+str(i+1)]['input_MSA'] = MSA
+    Print ("Dictionary building complete.")
     
-    # Train the model and obtain the MSA parameters.
-    Print ("")
-    Print ("Training the BasicAlign model...")
-    model_basicAlign.fit(N_steps, verbose=True)
-    msa_params = model_basicAlign.opt.get_params()
+    # Fill the dictionary with the training data.
+    for i, (name, seq_array_dict) in enumerate(dict_MSA.items()):
+        seq_array = seq_array_dict['input_MSA']
+        Print ("Training the model on protein " + str(i+1) + " out of " + str(len(sim_N_MSAs)) + ": " + name + "...")
+        dict_MSA[name]['alignments'], dict_MSA[name]['contacts'] = train_model(seq_array)
+    Print ("Training complete.")
     
-    # Create the TrainMRF model.
-    model_trainMRF = nf.MRF(X=ms_tr, lengths=lens_tr, sw_gap=gap)
-    
-    # Update it with the BasicAlign parameters.
-    mrf_params = model_trainMRF.opt.get_params()
-    for p in ["emb","gap","open"]:
-        mrf_params[p] = msa_params[p]
-    model_trainMRF.opt.set_params(mrf_params)
-    
-    # Train the model and obtain the MSA parameters.
-    Print ("Training the MRF model...")
-    model_trainMRF.fit(N_steps, verbose=True)
-    mrf_params = model_trainMRF.opt.get_params()
+    # Save the results in a pickle file.
+    Print ("Saving the results to " + pickle_file_sim + "...")
+    with open(pickle_file_sim, 'wb') as file:
+        pickle.dump(dict_MSA, file)
+    Print ("Complete.")
     
     
     
