@@ -13,6 +13,7 @@ module 'jax.experimental' has no attribute 'optimizers'"
 """
 
 import numpy as np
+import os
 import time
 import random
 import pickle
@@ -218,6 +219,10 @@ def run_simulation():
     def Print(s):
         print (str(int(time.time()-time_begin))+' sec:        ' + str(s))  
         
+    # Make sure that the path for saving the simulated datasets exists.
+    if not os.path.exists('seqGen/out'):
+        os.makedirs('seqGen/out')
+        
     # Generate the simulated dataset.
     Print ("Generating the simulated dataset: " + str(sim_N_MSAs) + " files, each containing " + str(sim_seq_num) + " sequences of length " + str(sim_seq_length) + ". Working on file...")
     for i in range(sim_N_MSAs):
@@ -230,8 +235,7 @@ def run_simulation():
     dict_MSA = {}
     for i in range(sim_N_MSAs):
         Print (str(i+1) + ' / ' + str(sim_N_MSAs))
-        msa_raw = get_feat('seqGen/out/sim_'+str(i+1), sim_alphabet[0])[1]
-        MSA = nf.one_hot(nf.pad_max(msa_raw))
+        MSA = get_feat('seqGen/out/sim_'+str(i+1)+'.a3m2', sim_alphabet[0])[1]
         dict_MSA['sim_'+str(i+1)] = {}
         dict_MSA['sim_'+str(i+1)]['input_MSA'] = MSA
     Print ("Dictionary building complete.")
@@ -239,7 +243,7 @@ def run_simulation():
     # Fill the dictionary with the training data.
     for i, (name, seq_array_dict) in enumerate(dict_MSA.items()):
         seq_array = seq_array_dict['input_MSA']
-        Print ("Training the model on protein " + str(i+1) + " out of " + str(len(sim_N_MSAs)) + ": " + name + "...")
+        Print ("Training the model on protein " + str(i+1) + " out of " + str(sim_N_MSAs) + ": " + name + "...")
         dict_MSA[name]['alignments'], dict_MSA[name]['contacts'] = train_model(seq_array)
     Print ("Training complete.")
     
@@ -258,6 +262,6 @@ if __name__ == "__main__":
     #run_data()
     
     # Uncomment this to run training on the simulated data (generated automatically).
-    #run_simulation()
+    run_simulation()
     
     pass

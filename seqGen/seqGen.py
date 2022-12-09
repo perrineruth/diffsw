@@ -16,6 +16,8 @@ alphabet_full = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M'
 # Directory the generated files are saved to.
 save_dir = 'out'
 
+# File containing the list of words.
+
 
 
 
@@ -28,7 +30,7 @@ save_dir = 'out'
 # ---
 # EXAMPLES:
 # >>> get_list_of_words()
-def get_list_of_words(file_word_list='word_list.txt', alphabet='amino', include_capitalized=True, include_abbreviations=False):
+def get_list_of_words(file_word_list=os.path.join(os.path.dirname(__file__), 'word_list.txt'), alphabet='amino', include_capitalized=True, include_abbreviations=False):
     
     # Obtain the raw list of words and convert it to the list of strings.
     full_word_list = [str(s) for s in list(np.genfromtxt(file_word_list, dtype=str, skip_header=0, usecols=0, comments=None))]
@@ -411,11 +413,8 @@ def generate_a3m (filename: str, seq_length : int, seq_file_length : int, seq_ty
     output_sequence_list = align_sentences(core_sentence, altered_sentences_list, w_alphabet, alteration_type=alt_type, preserve_spaces=True)
             
     # Save the file(s).
-    if not os.path.exists(save_dir):
-        os.makedirs(save_dir)
-        
     if generate_a3m2:
-        f_a3m2 = open(save_dir+'/'+filename+'.a3m2', 'w')
+        f_a3m2 = open(filename+'.a3m2', 'w')
         for i, seq in enumerate(output_sequence_list):
             if i > 0:
                 f_a3m2.write ('\n')
@@ -424,7 +423,7 @@ def generate_a3m (filename: str, seq_length : int, seq_file_length : int, seq_ty
         f_a3m2.close()
     
     output_sequence_list = [s.replace(' ','') for s in output_sequence_list]
-    f_a3m = open(save_dir+'/'+filename+'.a3m', 'w')
+    f_a3m = open(filename+'.a3m', 'w')
     for i, seq in enumerate(output_sequence_list):
         if i > 0:
             f_a3m.write ('\n')
