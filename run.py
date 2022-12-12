@@ -23,20 +23,28 @@ from seqGen.seqGen import generate_a3m
 
 
 
+# TRAINING VARIABLES
+verbose = True # Whether to print out diagnostic information.
+batch_size = 64 # The size of a training batch.
+filters = 256 # Number of convolutions to use.
+N_steps = 500 # Number of training steps.
+
+
+
+
 # DATA VARIABLES
 datafile = 'data_unalign.npz' # File containing the MSA data.
 test_protein = '3A0YA' # Name of the protein to use in the tests.
-N_samples = 2000 # Number of sequences to select for the procedure.
-N_steps = 500 # Number of training steps.
+N_samples = 128 # Number of sequences to select for the procedure. Must be no smaller than batch_size to avoid issues.
 N_proteins = 1 # Number of proteins to train the model for.
 pickle_file_data = 'train_data.pickle' # Pickle file for the outputs of training on the initial data.
 
 
 # SIMULATION VARIABLES.
 sim_alphabet = ('ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'full') # Tuple: string containing all symbols in the alphabet for the simulated data, and its seqGen name ('RNA', 'amino', or 'full').
+sim_seq_num = 128 # Number of simulated sequences per file. Must be no smaller than batch_size to avoid issues.
+sim_seq_length = 12 # Length of one simulated sequence.
 sim_N_MSAs = 1 # Number of MSA files to simulate.
-sim_seq_length = 100 # Length of one simulated sequence.
-sim_seq_num = 200 # Number of simulated sequences per file.
 pickle_file_sim = 'train_sim.pickle' # Pickle file for the outputs of training on the simulated data.
 
 
@@ -136,7 +144,7 @@ def get_protein_MSA(protein=test_protein, npz_file = datafile, return_protein_na
 # ---
 # seq_array: a list of 1D arrays of sequences, with the alphabet elements encoded as non-negative integers.
 # verbose: if True, then prints the diagnostic output during training.
-def train_model(seq_array, verbose=False):
+def train_model(seq_array, verbose=verbose):
     
     # Take a subset of data.
     x = nf.sub_sample(seq_array, samples=min(N_samples,len(seq_array)))
@@ -145,7 +153,7 @@ def train_model(seq_array, verbose=False):
     ms = nf.one_hot(nf.pad_max(x)) # pad_max converts a list of 1D-arrays into a 2D array, adding -1 to empty entries. For example, [[1,2,3],[4]] -> [[1,2,3],[4,-1,-1]]. One-hot then converts each 1D-array into an identity matrix with padding determined by the entries. Overall, this command just converts the data into the format the machine learning model expects.
     lens = np.array([len(y) for y in x]) # Array of lengths of sequences.
     gap = -3 # Alighnment gap penalty.
-    model_basicAlign = nf.BasicAlign(X=ms, lengths=lens, sw_gap = gap) # This model will be trained.
+    model_basicAlign = nf.BasicAlign(X = ms, lengths = lens, sw_gap = gap, batch_size = batch_size, filters = filters) # This model will be trained.
     
     # Train the model and obtain the MSA parameters.
     model_basicAlign.fit(N_steps, verbose=verbose)
@@ -155,8 +163,8 @@ def train_model(seq_array, verbose=False):
     x = nf.sub_sample(seq_array, samples=min(N_samples,len(seq_array)))
     lens = np.array([len(y) for y in x])
     ms = nf.one_hot(nf.pad_max(x))
-    model_trainMRF = nf.MRF(X=ms, lengths=lens, sw_gap = gap)
-    
+    model_trainMRF = nf.MRF(X = ms, lengths = lens, sw_gap = gap, batch_size = batch_size, filters = filters)
+     
     # Update it with the BasicAlign parameters.
     mrf_params = model_trainMRF.opt.get_params()
     for p in ["emb","gap","open"]:
@@ -243,7 +251,7 @@ def run_simulation():
     # Fill the dictionary with the training data.
     for i, (name, seq_array_dict) in enumerate(dict_MSA.items()):
         seq_array = seq_array_dict['input_MSA']
-        Print ("Training the model on protein " + str(i+1) + " out of " + str(sim_N_MSAs) + ": " + name + "...")
+        Print ("Training the model on simulated set " + str(i+1) + " out of " + str(sim_N_MSAs) + ": " + name + "...")
         dict_MSA[name]['alignments'], dict_MSA[name]['contacts'] = train_model(seq_array)
     Print ("Training complete.")
     
