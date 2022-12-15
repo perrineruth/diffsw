@@ -22,6 +22,8 @@ import pickle
 # GLOBAL VARIABLES
 data_alphabet = 'ARNDCQEGHILKMFPSTWYV' # String containing all symbols in the alphabet for the original data.
 sim_alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' # String containing all symbols in the alphabet for the simulated data.
+data_files_list = ['train_data.pickle'] # List of the pickle files with the data training outputs.
+sim_files_list = ['train_sim.pickle'] # List of the pickle files with the simulation training outputs.
 
 
 
@@ -85,10 +87,62 @@ def get_aln_seqs(pickle_dict, alphabet=None):
 
 
 
+
+# Calculates the empirical quality of the recovered alignment seq2 relative to seq1. In essence, for every two consecutive elements in seq1, the number of times they are encountered in seq1 is compared to seq2, and these numbers are treated as elements of two vectors -- and then the normalized dot product of the vectors is computed. The score is 1 for equal sequences, and 0 for perfectly unaligned sequences. Sequences must be first converted to strings using the convert_to_alphabet() function.
+# ---
+# seq1: reference sequence as a string.
+# seq2: target sequence as a string.
+# alphabet: if not None, then only two consecutive elements containing, at least, one element from the alphabet is considered. STRONGLY RECOMMENDED to not be set to None, otherwise for "sparse" sequence the scores will be abnormally high.
+# ---
+# NOTE: may return 1 even if the alignments are not exactly the same! Happens whenever the first alignment is a substring/subarray of the second alignment.
+# WARNING: each string must have, at least, 2 elements!
+def get_alignment_quality(seq1 : str, seq2 : str, alphabet : None):
+    vec1, vec2 = {}, {}
+    if type(seq1)==str and type(seq2)==str:
+        for s1, s2 in zip(seq1[:-1], seq1[1:]):
+            if (alphabet is None) or (s1 in alphabet or s2 in alphabet):
+                if not s1+s2 in vec1.keys():
+                    vec1[s1+s2] = seq1.count(s1+s2)
+                    vec2[s1+s2] = seq2.count(s1+s2)
+    else:
+        raise ValueError ("In get_alignment_quality(), seq1 and seq2 must both be strings! Values " + str(seq1) + " and " + str(seq2) + " of types " + str(type(seq1)) + " and " + str(type(seq2)) + " were submitted instead.")
+    vec1, vec2 = np.array([v for v in vec1.values()]), np.array([v for v in vec2.values()])
+    return np.dot(vec1,vec2)/np.linalg.norm(vec1)/np.linalg.norm(vec2) if not np.linalg.norm(vec2)==0 else 0
+
+
+
+
+# Calculates the distribution of the empirical alignment scores for the recovered alignments in the pickle dictionary. Value -1 is assigned to those alignments that have not been recovered.
+def get_alignment_quality_distrib(pickle_dict, alphabet):
+    num_of_seqs = len(pickle_dict['input_MSA'])
+    seq_dict = get_aln_seqs(pickle_dict, alphabet)
+    alignment_scores = [get_alignment_quality(seq_dict[0],seq_dict[i], alphabet) if i in seq_dict.keys() else -1 for i in range(num_of_seqs)]
+    return alignment_scores
+            
+
+
     
 if __name__ == "__main__":
     
-    # IMPLEMENTATION PENDING
-
+    # For now this just calculates the distributions of empirical alignment scores for all the data and simulated post-trained sequences. In the future some relevant plots will be created as well.
+    
+    # Distributions for the protein data.
+    for d in data_files_list:
+        file = open(d, 'rb')
+        data = pickle.load(file)
+        for p in data.keys():
+            print ("Distribution of empirical alignment scores for protein " + p + ": ")
+            print (get_alignment_quality_distrib(data[p], data_alphabet))
+            print ('')
+        file.close()
+    
+    # Distributions for the simulated data.
+    for s in sim_files_list:
+        file = open(s, 'rb')
+        data = pickle.load(file)
+        for p in data.keys():
+            print ("Distribution of empirical alignment scores for simulated dataset " + p + ": ")
+            print (get_alignment_quality_distrib(data[p], sim_alphabet))
+            print ('')
     
     pass
