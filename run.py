@@ -25,9 +25,9 @@ from seqGen.seqGen import generate_a3m
 
 # TRAINING VARIABLES
 verbose = True # Whether to print out diagnostic information.
-batch_size = 64 # The size of a training batch.
+batch_size = 96 # The size of a training batch.
 filters = 256 # Number of convolutions to use.
-N_steps = 500 # Number of training steps.
+N_steps = 2000 # Number of training steps.
 
 
 
@@ -35,14 +35,14 @@ N_steps = 500 # Number of training steps.
 # DATA VARIABLES
 datafile = 'data_unalign.npz' # File containing the MSA data.
 test_protein = '3A0YA' # Name of the protein to use in the tests.
-N_samples = 128 # Number of sequences to select for the procedure. Must be no smaller than batch_size to avoid issues.
+N_samples = 192 # Number of sequences to select for the procedure. Must be no smaller than batch_size to avoid issues.
 N_proteins = 1 # Number of proteins to train the model for.
 pickle_file_data = 'train_data.pickle' # Pickle file for the outputs of training on the initial data.
 
 
 # SIMULATION VARIABLES.
 sim_alphabet = ('ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'full') # Tuple: string containing all symbols in the alphabet for the simulated data, and its seqGen name ('RNA', 'amino', or 'full').
-sim_seq_num = 128 # Number of simulated sequences per file. Must be no smaller than batch_size to avoid issues.
+sim_seq_num = 192 # Number of simulated sequences per file. Must be no smaller than batch_size to avoid issues.
 sim_seq_length = 12 # Length of one simulated sequence.
 sim_N_MSAs = 1 # Number of MSA files to simulate.
 pickle_file_sim = 'train_sim.pickle' # Pickle file for the outputs of training on the simulated data.
