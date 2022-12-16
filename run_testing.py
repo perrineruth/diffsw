@@ -14,6 +14,10 @@ module 'jax.experimental' has no attribute 'optimizers'"
 
 
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import matplotlib.lines as mlines
 import pickle
 
 
@@ -24,6 +28,7 @@ data_alphabet = 'ARNDCQEGHILKMFPSTWYV' # String containing all symbols in the al
 sim_alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' # String containing all symbols in the alphabet for the simulated data.
 data_files_list = ['train_data.pickle'] # List of the pickle files with the data training outputs.
 sim_files_list = ['train_sim.pickle'] # List of the pickle files with the simulation training outputs.
+sim_a3m_files_list = [['seqGen/out/sim_1.a3m']] # List of lists of the pickle files with the simulation training outputs as *.a3m files.
 
 
 
@@ -88,6 +93,18 @@ def get_aln_seqs(pickle_dict, alphabet=None):
 
 
 
+# Returns the ground truth alignment (string) for the seq_num'th sequence in file file_a3m. Replaces all dashes with dots.
+def get_ground_truth_alignment(file_a3m, seq_num):
+    i = -1
+    for line in open(file_a3m,'r').readlines():
+        if not line[0]=='>':
+            i += 1
+        if i==seq_num:
+            return line[:-1].replace('-','.')
+
+
+
+
 # Calculates the empirical quality of the recovered alignment seq2 relative to seq1. In essence, for every two consecutive elements in seq1, the number of times they are encountered in seq1 is compared to seq2, and these numbers are treated as elements of two vectors -- and then the normalized dot product of the vectors is computed. The score is 1 for equal sequences, and 0 for perfectly unaligned sequences. Sequences must be first converted to strings using the convert_to_alphabet() function.
 # ---
 # seq1: reference sequence as a string.
@@ -97,6 +114,7 @@ def get_aln_seqs(pickle_dict, alphabet=None):
 # NOTE: may return 1 even if the alignments are not exactly the same! Happens whenever the first alignment is a substring/subarray of the second alignment.
 # WARNING: each string must have, at least, 2 elements!
 def get_alignment_quality(seq1 : str, seq2 : str, alphabet : None):
+    seq1, seq2 = seq1.upper(), seq2.upper()
     vec1, vec2 = {}, {}
     if type(seq1)==str and type(seq2)==str:
         for s1, s2 in zip(seq1[:-1], seq1[1:]):
@@ -112,12 +130,40 @@ def get_alignment_quality(seq1 : str, seq2 : str, alphabet : None):
 
 
 
-# Calculates the distribution of the empirical alignment scores for the recovered alignments in the pickle dictionary. Value -1 is assigned to those alignments that have not been recovered.
-def get_alignment_quality_distrib(pickle_dict, alphabet):
+# Calculates the distribution of the empirical alignment scores for the recovered alignments in the pickle dictionary. Value -1 is assigned to those alignments that have not been recovered. If file_a3m is specified, then adjusts the quality based on the ground truth.
+def get_alignment_quality_distrib(pickle_dict, alphabet, file_a3m=None):
     num_of_seqs = len(pickle_dict['input_MSA'])
     seq_dict = get_aln_seqs(pickle_dict, alphabet)
-    alignment_scores = [get_alignment_quality(seq_dict[0],seq_dict[i], alphabet) if i in seq_dict.keys() else -1 for i in range(num_of_seqs)]
-    return alignment_scores
+    raw_alignment_scores = [get_alignment_quality(seq_dict[0], seq_dict[i], alphabet) if i in seq_dict.keys() else -1 for i in range(num_of_seqs)]
+    if file_a3m is None:
+        return raw_alignment_scores
+    else:
+        true_alignment_scores = [get_alignment_quality(get_ground_truth_alignment(file_a3m, 0), get_ground_truth_alignment(file_a3m, i), alphabet) if i in seq_dict.keys() else -1 for i in range(num_of_seqs)]
+        return [a/t if not (t==0 or a==0) else 0 for a, t in zip(raw_alignment_scores, true_alignment_scores)]
+    
+    
+    
+    
+# Plots multiple alignment quality histograms; the list of alignment quality distributions (list of lists of values) must be specified. The negative values are ignored.    
+def plot_alignment_quality_hist(list_of_distribs, color_list=['red', 'blue', 'black'], label_list=['hist_1', 'hist_2', 'hist_3'], plot_name='alignment_quality_hist'):
+    color_list = color_list[:len(list_of_distribs)]
+    label_list = label_list[:len(list_of_distribs)]
+    plt.clf()
+    plt.title('Empirical alignment quality distribution', size=24)
+    plt.xlabel('Empirical alignment quality', size=24)
+    plt.ylabel('Number of occurrences', size=24)
+    for i, distrib in enumerate(list_of_distribs):
+        distrib = np.array(distrib)
+        distrib = distrib[distrib>=0]
+        plt.hist(distrib, bins=50, color=color_list[i], fill=True,linewidth=1,histtype='step',alpha=0.7)
+    legend_parts = []
+    for i in range (0,len(list_of_distribs)):
+        legend_parts.append(mlines.Line2D([], [], color=color_list[i], linestyle='None', marker='s', markersize=30, label=label_list[i]))
+    plt.legend(handles=legend_parts, loc='upper left',fontsize=24)
+    plt.gcf().set_size_inches(25.6, 14.4)
+    plt.tight_layout()
+    plt.gcf().savefig("plots/"+plot_name+".eps", bbox_inches='tight',pad_inches=0.01, dpi=100, format='eps')
+    plt.gcf().savefig("plots/"+plot_name+".png", bbox_inches='tight',pad_inches=0.01, dpi=100, format='png')
             
 
 
@@ -127,22 +173,33 @@ if __name__ == "__main__":
     # For now this just calculates the distributions of empirical alignment scores for all the data and simulated post-trained sequences. In the future some relevant plots will be created as well.
     
     # Distributions for the protein data.
+    data_distrib_list, data_protein_list = [], []
     for d in data_files_list:
         file = open(d, 'rb')
         data = pickle.load(file)
         for p in data.keys():
-            print ("Distribution of empirical alignment scores for protein " + p + ": ")
-            print (get_alignment_quality_distrib(data[p], data_alphabet))
-            print ('')
+            data_distrib_list.append(get_alignment_quality_distrib(data[p], data_alphabet))
+            data_protein_list.append(p)
         file.close()
     
     # Distributions for the simulated data.
+    sim_raw_distrib_list, sim_dataset_list = [], []
     for s in sim_files_list:
         file = open(s, 'rb')
         data = pickle.load(file)
         for p in data.keys():
-            print ("Distribution of empirical alignment scores for simulated dataset " + p + ": ")
-            print (get_alignment_quality_distrib(data[p], sim_alphabet))
-            print ('')
+            sim_raw_distrib_list.append(get_alignment_quality_distrib(data[p], sim_alphabet))
+            sim_dataset_list.append(p)
+            
+    # Distributions for the simulated data with ground truth established.
+    sim_adj_distrib_list = []
+    for s, a_list in zip(sim_files_list, sim_a3m_files_list):
+        file = open(s, 'rb')
+        data = pickle.load(file)
+        for p, a in zip(data.keys(), a_list):
+            sim_adj_distrib_list.append(get_alignment_quality_distrib(data[p], sim_alphabet, a))
     
-    pass
+    # Create sample alignment quality histograms.
+    data_distrib, data_protein, sim_raw_distrib, sim_adj_distrib, sim_dataset = data_distrib_list[0], data_protein_list[0], sim_raw_distrib_list[0], sim_adj_distrib_list[0], sim_dataset_list[0]
+    plot_alignment_quality_hist([data_distrib, sim_raw_distrib], label_list = ['Protein ' + data_protein, 'Dataset ' + sim_dataset], plot_name=data_protein + '_' + sim_dataset + '_EAQ_hist')
+    plot_alignment_quality_hist([sim_raw_distrib, sim_adj_distrib], label_list = ['Dataset ' + sim_dataset + " : raw", 'Dataset ' + sim_dataset + " : adjusted"], plot_name=sim_dataset + '_EAQ_hist')
