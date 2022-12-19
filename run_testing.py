@@ -28,7 +28,8 @@ data_alphabet = 'ARNDCQEGHILKMFPSTWYV' # String containing all symbols in the al
 sim_alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' # String containing all symbols in the alphabet for the simulated data.
 data_files_list = ['train_data.pickle'] # List of the pickle files with the data training outputs.
 sim_files_list = ['train_sim.pickle'] # List of the pickle files with the simulation training outputs.
-sim_a3m_files_list = [['seqGen/out/sim_1.a3m']] # List of lists of the pickle files with the simulation training outputs as *.a3m files.
+sim_a3m_files_list = [['seqGen/out/sim_1.a3m', 'seqGen/out/sim_2.a3m', 'seqGen/out/sim_3.a3m']] # List of lists of the pickle files with the simulation training outputs as *.a3m files.
+color_list = ['red', 'blue', 'seagreen', 'black', 'purple', 'orange', 'teal', 'darkred', 'darkblue', 'darkgreen']
 
 
 
@@ -145,17 +146,19 @@ def get_alignment_quality_distrib(pickle_dict, alphabet, file_a3m=None):
     
     
 # Plots multiple alignment quality histograms; the list of alignment quality distributions (list of lists of values) must be specified. The negative values are ignored.    
-def plot_alignment_quality_hist(list_of_distribs, color_list=['red', 'blue', 'black'], label_list=['hist_1', 'hist_2', 'hist_3'], plot_name='alignment_quality_hist'):
+def plot_alignment_quality_hist(list_of_distribs, color_list=['red', 'blue', 'black'], label_list=['hist_1', 'hist_2', 'hist_3'], plot_name='alignment_quality_hist', alpha=0.7, log_scale=False):
     color_list = color_list[:len(list_of_distribs)]
     label_list = label_list[:len(list_of_distribs)]
     plt.clf()
     plt.title('Empirical alignment quality distribution', size=24)
     plt.xlabel('Empirical alignment quality', size=24)
     plt.ylabel('Number of occurrences', size=24)
+    if log_scale:
+        plt.gca().set_yscale('log')
     for i, distrib in enumerate(list_of_distribs):
         distrib = np.array(distrib)
         distrib = distrib[distrib>=0]
-        plt.hist(distrib, bins=50, color=color_list[i], fill=True,linewidth=1,histtype='step',alpha=0.7)
+        plt.hist(distrib, bins=50, color=color_list[i], fill=True,linewidth=1,histtype='step',alpha=alpha)
     legend_parts = []
     for i in range (0,len(list_of_distribs)):
         legend_parts.append(mlines.Line2D([], [], color=color_list[i], linestyle='None', marker='s', markersize=30, label=label_list[i]))
@@ -169,8 +172,6 @@ def plot_alignment_quality_hist(list_of_distribs, color_list=['red', 'blue', 'bl
 
     
 if __name__ == "__main__":
-    
-    # For now this just calculates the distributions of empirical alignment scores for all the data and simulated post-trained sequences. In the future some relevant plots will be created as well.
     
     # Distributions for the protein data.
     data_distrib_list, data_protein_list = [], []
@@ -203,3 +204,5 @@ if __name__ == "__main__":
     data_distrib, data_protein, sim_raw_distrib, sim_adj_distrib, sim_dataset = data_distrib_list[0], data_protein_list[0], sim_raw_distrib_list[0], sim_adj_distrib_list[0], sim_dataset_list[0]
     plot_alignment_quality_hist([data_distrib, sim_raw_distrib], label_list = ['Protein ' + data_protein, 'Dataset ' + sim_dataset], plot_name=data_protein + '_' + sim_dataset + '_EAQ_hist')
     plot_alignment_quality_hist([sim_raw_distrib, sim_adj_distrib], label_list = ['Dataset ' + sim_dataset + " : raw", 'Dataset ' + sim_dataset + " : adjusted"], plot_name=sim_dataset + '_EAQ_hist')
+    plot_alignment_quality_hist(sim_adj_distrib_list, label_list = ['Dataset ' + sim_dataset for sim_dataset in sim_dataset_list], plot_name='EAQ_hist_full', alpha=0.5, log_scale=True)
+    plot_alignment_quality_hist(data_distrib_list, label_list = ['Protein '+ p for p in data_protein_list], color_list=color_list, plot_name='EAQ_hist_data_full', alpha=0.5)

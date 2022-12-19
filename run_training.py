@@ -36,7 +36,7 @@ N_steps = 2000 # Number of training steps.
 datafile = 'data_unalign.npz' # File containing the MSA data.
 test_protein = '3A0YA' # Name of the protein to use in the tests.
 N_samples = 192 # Number of sequences to select for the procedure. Must be no smaller than batch_size to avoid issues.
-N_proteins = 1 # Number of proteins to train the model for.
+N_proteins = 10 # Number of proteins to train the model for.
 pickle_file_data = 'train_data.pickle' # Pickle file for the outputs of training on the initial data.
 
 
@@ -44,7 +44,7 @@ pickle_file_data = 'train_data.pickle' # Pickle file for the outputs of training
 sim_alphabet = ('ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'full') # Tuple: string containing all symbols in the alphabet for the simulated data, and its seqGen name ('RNA', 'amino', or 'full').
 sim_seq_num = 192 # Number of simulated sequences per file. Must be no smaller than batch_size to avoid issues.
 sim_seq_length = 12 # Length of one simulated sequence.
-sim_N_MSAs = 1 # Number of MSA files to simulate.
+sim_N_MSAs = 3 # Number of MSA files to simulate.
 pickle_file_sim = 'train_sim.pickle' # Pickle file for the outputs of training on the simulated data.
 
 
@@ -270,4 +270,4 @@ if __name__ == "__main__":
     run_data()
     
     # Uncomment this to run training on the simulated data (generated automatically).
-    run_simulation()
+    #run_simulation()
